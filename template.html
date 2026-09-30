@@ -5,9 +5,32 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ping Pong</title>
     <link rel="stylesheet" href="layout.css">
-    <img src="assets/favicon.ico" height="512" width="512"/>
+    <link rel="icon" href="assets/favicon.ico">
 </head>
 <body>
+    <!--Game header-->
+    <div id="hud">
+        <span>Score: <b id="score">0</b></span>
+        <span>Stage 1</span>
+        <span>Life: <b id="life">3</b></span>
+    </div>
+
+    <!--Game frame-->
+    <div id="frame">
+        <table id="bricks"></table>
+        <div id="ball"></div>
+        <div id="paddle"></div>
+        <div id="message"><p>Open the game</p></div>
+    </div>
+
+    <!--Hints-->
+    <p class="hint">
+        Click <strong>LMB</strong> or press <strong>Space</strong> to release the ball
+    </p>
+    <p class="hint">
+        Use mouse or press <strong>Left</strong> and <strong>Right</strong> to move the paddle
+    </p>
+
     <script src="logic.js"></script>
 </body>
 </html>
