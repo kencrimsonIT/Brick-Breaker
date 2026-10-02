@@ -4,4 +4,91 @@ body {
     font-family: 'Montserrat', sans-serif;
     background: #1a1a1a;
     color: #fff;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 13px;
+    margin: 0 auto;
+    padding: 18px;
+}
+
+#hud {
+    display: flex;
+    justify-content: space-between;
+    font-weight: 500;
+}
+
+#frame {
+    position: relative;
+    background: #111;
+    border-radius: 9px;
+    overflow: hidden;
+    touch-action: none;
+    user-select: none;
+}
+
+#bricks {
+    position: absolute;
+    left: 0;
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+
+#bricks td {
+    padding: 0;
+    box-sizing: border-box;
+    border: 1px solid #111;
+    border-radius: 5px;
+}
+
+#bricks td.broken {
+    visibility: hidden;
+}
+
+#ball {
+    position: absolute;
+    top: 0;
+    left: 0;
+    border-radius: 50%;
+    box-shadow: 0 0 10px rgba(255, 255, 170, 0.45);
+}
+
+#paddle {
+    position: absolute;
+    top: 0;
+    left: 0;
+    border-radius: 7px;
+}
+
+#message {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    position: absolute;
+    inset: 0;
+    gap: 5px;
+    background: rgba(0, 0, 0, 0.6);
+    cursor: pointer;
+}
+
+#message.hidden {
+    display: none;
+}
+
+#message h2 {
+    margin: 0;
+    font-size: 36px;
+}
+
+#message p {
+    margin: 0;
+    opacity: 0.7;
+}
+
+.hint {
+    margin: 0;
+    font-size: 15px;
+    opacity: 0.7;
 }
