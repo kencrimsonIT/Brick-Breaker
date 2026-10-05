@@ -53,6 +53,7 @@ let ballX = 0, ballY = 0, ballSpeedX = 0, ballSpeedY = 0;
 let isLaunched = false;
 let gameState = 'menu';
 let keys = {};
+let lastTime = 0;
 
 
 //Setup game UI
@@ -80,7 +81,7 @@ const createBricks = () => {
         const gridRow = bricksGrid.insertRow();
         const row = [];
         for (let c = 0; c < brickCols; c++) {
-            const cell = bricksGrid.insertCell();
+            const cell = gridRow.insertCell();
             cell.style.width = brickWidth + 'px';
             cell.style.height = brickHeight + 'px';
             cell.style.background = brickColors[r % brickColors.length];
@@ -114,7 +115,7 @@ const startGame = () => {
     resetBall();
     updateHud();
     gameState = 'playing';
-    message.classList.remove('hidden');
+    message.classList.add('hidden');
 }
 
 const resetBall = () => {
@@ -129,9 +130,9 @@ const resetBall = () => {
 const launchBall = () => {
     if (gameState !== 'playing' || isLaunched) return;
     isLaunched = true;
-    const angle = (Math.random() * 60 - 30) * Math.PI / 180;
-    ballSpeedX = ballSpeed * Math.sin(angle);
-    ballSpeedY = -ballSpeed * Math.cos(angle);
+    const ballAngle = (Math.random() * 60 - 30) * Math.PI / 180;
+    ballSpeedX = ballSpeed * Math.sin(ballAngle);
+    ballSpeedY = -ballSpeed * Math.cos(ballAngle);
 }
 
 const endGame = (isClear) => {
@@ -143,6 +144,136 @@ const endGame = (isClear) => {
     );
 }
 
+const breakBrick = (brick) => {
+    brick.alive = false;
+    brick.cell.classList.add('broken');
+    bricksLeft--;
+    scoreValue += pointPerBrick;
+    updateHud();
+}
+
+const brickPosition = (x, y) => {
+    const col = Math.floor(x / brickWidth);
+    const row = Math.floor((y - brickTop) / brickHeight);
+    if (row < 0 || row >= brickRows || col < 0 || col >= brickCols) return null;
+    return bricks[row][col].alive ? bricks[row][col] : null;
+}
+
+const renderBricks = () => {
+    paddle.style.transform = `translate(${paddleX}px, ${paddleY}px)`;
+    ball.style.transform = `translate(${ballX - ballRadius}px, ${ballY - ballRadius}px)`;
+}
+
+const gameLoop = (time) => {
+    const fps = Math.min((time - lastTime) / 16.67, 3) || 1;
+    lastTime = time;
+    if (gameState === 'playing') updateGameplay(fps);
+    renderBricks();
+    requestAnimationFrame(gameLoop);
+}
+
+const updateGameplay = (fps) => {
+    if (keys['ArrowLeft']) paddleX -= paddleSpeed * fps;
+    if (keys['ArrowRight']) paddleX += paddleSpeed * fps;
+    paddleX = Math.max(0, Math.min(frameWidth - paddleWidth, paddleX));
+
+    if (!isLaunched) {
+        ballX = paddleX + paddleWidth / 2;
+        ballY = paddleY - ballRadius;
+        return;
+    }
+
+    const directionX = Math.sign(ballSpeedX);
+    const directionY = Math.sign(ballSpeedY);
+    const nextX = ballX + ballSpeedX * fps;
+    const nextY = ballY + ballSpeedY * fps;
+
+    const brickX = brickPosition(nextX + directionX * ballRadius, ballY);
+    if (brickX) {
+        breakBrick(brickX);
+        ballSpeedX = -ballSpeedX;
+    } else {
+        ballX = nextX;
+    }
+
+    const brickY = brickPosition(ballX, nextY + directionY * ballRadius);
+    if (brickY) {
+        breakBrick(brickY);
+        ballSpeedY = -ballSpeedY;
+    } else {
+        ballY = nextY;
+    }
+
+    if (ballX < ballRadius) {
+        ballX = ballRadius;
+        ballSpeedX = Math.abs(ballSpeedX);
+    }
+
+    if (ballX > frameWidth - ballRadius) {
+        ballX = frameWidth - ballRadius;
+        ballSpeedX = -Math.abs(ballSpeedX);
+    }
+
+    if (ballY < ballRadius) {
+        ballY = ballRadius;
+        ballSpeedY = Math.abs(ballSpeedY);
+    }
+
+    if (
+        ballSpeedY > 0 &&
+        ballY + ballRadius >= paddleY &&
+        ballY + ballRadius <= paddleY + paddleHeight &&
+        ballX >= paddleX - ballRadius &&
+        ballX <= paddleX + paddleWidth + ballRadius
+    ) {
+        const offset = (ballX - (paddleX + paddleWidth / 2)) / (paddleWidth / 2);
+        const angle = Math.max(-1, Math.min(1, offset)) * maxBounceAngle * Math.PI / 180;
+        ballSpeedX = ballSpeed * Math.sin(angle);
+        ballSpeedY = -ballSpeed * Math.cos(angle);
+        ballY = paddleY - ballRadius;
+    }
+
+    if (ballY - ballRadius > frameHeight) {
+        lifeValue--;
+        updateHud();
+        if (lifeValue <= 0) {
+            endGame(false);
+            return;
+        }
+        resetBall();
+        return;
+    }
+
+    if (bricksLeft === 0) endGame(true);
+}
+
+
+
+
+//Game controller
+const paddleMovement = (clientX) => {
+    const rect = frame.getBoundingClientRect();
+    const x = (clientX - rect.left) * (frameWidth / rect.width);
+    paddleX = Math.max(0, Math.min(frameWidth - paddleWidth, x - paddleWidth / 2));
+}
+
+const handleAction = () => {
+    if (gameState === 'playing') launchBall();
+    else startGame();
+}
+
+document.addEventListener('mousemove', e => { if (gameState === 'playing') paddleMovement(e.clientX); });
+frame.addEventListener('click', handleAction);
+document.addEventListener('keydown', e => {
+    keys[e.key] = true;
+    if (e.key === ' ' && !e.repeat) {
+        e.preventDefault();
+        handleAction();
+    }
+});
+document.addEventListener('keyup', e => { keys[e.key] = false; });
+
+
 
 
 setupFrame();
@@ -150,3 +281,4 @@ createBricks();
 resetBall();
 updateHud();
 showMessage('Brick Breaker', 'Click or press Space to start');
+requestAnimationFrame(gameLoop);
