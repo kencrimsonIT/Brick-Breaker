@@ -7,10 +7,11 @@ const paddle = document.getElementById('paddle');
 const message = document.getElementById('message');
 const hud = document.getElementById('hud');
 const bricksGrid = document.getElementById('bricks');
+const stage = document.getElementById('stage');
 
 //Initialize brick UI
 const brickCols = 9;
-const brickRows = 5;
+let brickRows = 5;
 const brickColors = [
     '#ff3333',
     '#5cd65c',
@@ -18,13 +19,13 @@ const brickColors = [
     '#ffff4d',
     '#a64dff'
 ];
-const brickWidth = 63;
+const brickWidth = 72;
 const brickHeight = 20;
 let bricks = []; //empty bricks array
 
 //Initialize ball UI
-const paddleWidth = 70;
-const paddleHeight = 20;
+const paddleWidth = 100;
+const paddleHeight = 15;
 const paddleColor = '#777';
 
 //Initialize ball UI
@@ -38,10 +39,11 @@ const frameHeight = 600;
 const brickTop = 60;
 const paddleY = frameHeight - 45;
 const paddleSpeed = 10;
-const ballSpeed = 5;
+let ballSpeed = 5;
 const startLife = 3;
 const pointPerBrick = 15;
 const maxBounceAngle = 65;
+const firstStage = 0;
 
 //Game state
 const ballRadius = ballWidth / 2;
@@ -54,6 +56,7 @@ let isLaunched = false;
 let gameState = 'menu';
 let keys = {};
 let lastTime = 0;
+let currentStage = firstStage;
 
 
 //Setup game UI
@@ -74,6 +77,8 @@ const setupFrame = () => {
 }
 
 const createBricks = () => {
+    const layout = STAGES[currentStage].layout;
+    brickRows = layout.length;
     bricksGrid.innerHTML = '';
     bricks = [];
     bricksLeft = 0;
@@ -81,12 +86,27 @@ const createBricks = () => {
         const gridRow = bricksGrid.insertRow();
         const row = [];
         for (let c = 0; c < brickCols; c++) {
+            const type = layout[r][c];
             const cell = gridRow.insertCell();
             cell.style.width = brickWidth + 'px';
             cell.style.height = brickHeight + 'px';
-            cell.style.background = brickColors[r % brickColors.length];
-            row.push({cell, alive: true});
-            bricksLeft++;
+
+            const brick = {
+                cell,
+                type,
+                alive: type === 'N' || type === 'M'
+            };
+
+            if (type === 'N') {
+                cell.style.background = brickColors[r % brickColors.length];
+                bricksLeft++;
+            } else if (type === 'M') {
+                cell.classList.add('metal');
+                cell.style.background = '#737373';
+            } else {
+                cell.classList.add('broken');
+            }
+            row.push(brick);
         }
         bricks.push(row);
     }
@@ -102,6 +122,7 @@ const showMessage = (title, line1, line2) => {
 const updateHud = () => {
     score.textContent = scoreValue;
     life.textContent = lifeValue;
+    stage.textContent = `${currentStage + 1}`;
 }
 
 
@@ -111,9 +132,21 @@ const updateHud = () => {
 const startGame = () => {
     scoreValue = 0;
     lifeValue = startLife;
+    loadStages();
+    gameState = 'playing';
+    message.classList.add('hidden');
+}
+
+const loadStages = () => {
+    ballSpeed = STAGES[currentStage].ballSpeed;
     createBricks();
     resetBall();
     updateHud();
+}
+
+const nextStage = () => {
+    currentStage++;
+    loadStages();
     gameState = 'playing';
     message.classList.add('hidden');
 }
@@ -136,9 +169,20 @@ const launchBall = () => {
 }
 
 const endGame = (isClear) => {
+    const isLastStage = currentStage === STAGES.length - 1;
+    if (isClear && !isLastStage) {
+        gameState = 'clear';
+        showMessage(
+            'Stage clear!',
+            'Score: ' + scoreValue,
+            'Click or press Space for the next stage'
+        );
+        return;
+    }
+
     gameState = 'over';
     showMessage(
-        isClear ? 'Stage clear!' : 'Game over',
+        isClear ? 'You win!' : 'Game over',
         'Score: ' + scoreValue,
         'Click or press Space to play again'
     );
@@ -150,6 +194,11 @@ const breakBrick = (brick) => {
     bricksLeft--;
     scoreValue += pointPerBrick;
     updateHud();
+}
+
+const hitMetalBrick = (brick) => {
+    if (brick.type === 'M') return;
+    breakBrick(brick);
 }
 
 const brickPosition = (x, y) => {
@@ -259,6 +308,7 @@ const paddleMovement = (clientX) => {
 
 const handleAction = () => {
     if (gameState === 'playing') launchBall();
+    else if (gameState === 'clear') nextStage();
     else startGame();
 }
 
