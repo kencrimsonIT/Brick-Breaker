@@ -37,19 +37,68 @@ const ballColor = '#ffffb3';
 const frameWidth = brickWidth * brickCols;
 const frameHeight = 600;
 const brickTop = 60;
-const paddleY = frameHeight - 45;
+const paddleY = frameHeight - 45; //paddle position
 const paddleSpeed = 10;
 let ballSpeed = 5;
 const startLife = 3;
 const pointPerBrick = 15;
 const maxBounceAngle = 65;
 const firstStage = 0;
+const maxLife = 6; //maximum life value
+
+//Power-up item settings
+const itemWidth = 30;
+const itemHeight = 20;
+const itemDropSpeed = 2.75;
+const widePaddleScale = 1.7;
+const widePaddleDuration = 600;
+const shieldHeight = 8;
+const shieldY = frameHeight - 15; //shield position (below the paddle)
+
+//Item state
+let items = [];
+let effects = {
+    widePaddleTimer: 0,
+    shield: false
+}
+const shield = document.createElement('div');
+
+//Item types
+const ITEMS_TYPE = {
+    extraLife: {
+        label: '+1 life',
+        color: '#ff3333',
+        apply: () => {
+            lifeValue = Math.min(lifeValue + 1, maxLife);
+            updateHud();
+        }
+    },
+
+    widePaddle: {
+        label: 'Wide paddle',
+        color: '#66b3ff',
+        apply: () => {
+            effects.widePaddleTimer = widePaddleDuration;
+            setPaddleWidth(paddleWidth * widePaddleScale);
+        }
+    },
+
+    shield: {
+        label: 'Shield',
+        color: '#ffff70',
+        apply: () => {
+            effects.shield = true;
+            shield.classList.remove('hidden');
+        }
+    }
+};
 
 //Game state
 const ballRadius = ballWidth / 2;
 let scoreValue = 0;
 let lifeValue = startLife;
 let bricksLeft = 0;
+let currentPaddleWidth = paddleWidth;
 let paddleX = 0;
 let ballX = 0, ballY = 0, ballSpeedX = 0, ballSpeedY = 0;
 let isLaunched = false;
@@ -74,6 +123,12 @@ const setupFrame = () => {
     ball.style.width = ballWidth + 'px';
     ball.style.height = ballHeight + 'px';
     ball.style.background = ballColor;
+
+    shield.id = 'shield';
+    shield.classList.add('hidden');
+    shield.style.top = shieldY + 'px';
+    shield.style.height = shieldHeight + 'px';
+    frame.insertBefore(shield, message);
 }
 
 const createBricks = () => {
@@ -94,12 +149,16 @@ const createBricks = () => {
             const brick = {
                 cell,
                 type,
-                alive: type === 'N' || type === 'M'
+                alive: type === 'N' || type === 'M' || type === 'P', row: r, col: c
             };
 
-            if (type === 'N') {
+            if (type === 'N' || type === 'P') {
                 cell.style.background = brickColors[r % brickColors.length];
                 bricksLeft++;
+                if (type === 'P') {
+                    cell.classList.add('has-item');
+                    cell.textContent = '?';
+                }
             } else if (type === 'M') {
                 cell.classList.add('metal');
                 cell.style.background = '#737373';
@@ -132,6 +191,7 @@ const updateHud = () => {
 const startGame = () => {
     scoreValue = 0;
     lifeValue = startLife;
+    currentStage = firstStage;
     loadStages();
     gameState = 'playing';
     message.classList.add('hidden');
@@ -152,6 +212,7 @@ const nextStage = () => {
 }
 
 const resetBall = () => {
+    clearEffects();
     isLaunched = false;
     paddleX = (frameWidth - paddleWidth) / 2;
     ballSpeedX = 0;
@@ -169,6 +230,7 @@ const launchBall = () => {
 }
 
 const endGame = (isClear) => {
+    clearEffects();
     const isLastStage = currentStage === STAGES.length - 1;
     if (isClear && !isLastStage) {
         gameState = 'clear';
@@ -194,9 +256,11 @@ const breakBrick = (brick) => {
     bricksLeft--;
     scoreValue += pointPerBrick;
     updateHud();
+    if (brick.type === 'P') spawnItem(brick);
 }
 
-const hitMetalBrick = (brick) => {
+//Bounce when hit metal bricks, break when hit normal bricks
+const hitBrick = (brick) => {
     if (brick.type === 'M') return;
     breakBrick(brick);
 }
@@ -239,7 +303,7 @@ const updateGameplay = (fps) => {
 
     const brickX = brickPosition(nextX + directionX * ballRadius, ballY);
     if (brickX) {
-        breakBrick(brickX);
+        hitBrick(brickX);
         ballSpeedX = -ballSpeedX;
     } else {
         ballX = nextX;
@@ -247,7 +311,7 @@ const updateGameplay = (fps) => {
 
     const brickY = brickPosition(ballX, nextY + directionY * ballRadius);
     if (brickY) {
-        breakBrick(brickY);
+        hitBrick(brickY);
         ballSpeedY = -ballSpeedY;
     } else {
         ballY = nextY;
@@ -282,6 +346,13 @@ const updateGameplay = (fps) => {
         ballY = paddleY - ballRadius;
     }
 
+    if (effects.shield && ballSpeedY > 0 && ballY + ballRadius > shieldY) {
+        ballY = shieldY - ballRadius;
+        ballSpeedY = -Math.abs(ballSpeedY);
+        effects.shield = false;
+        shield.classList.add('hidden');
+    }
+
     if (ballY - ballRadius > frameHeight) {
         lifeValue--;
         updateHud();
@@ -296,6 +367,90 @@ const updateGameplay = (fps) => {
     if (bricksLeft === 0) endGame(true);
 }
 
+
+
+
+//Item logic
+const setPaddleWidth = (width) => {
+    const center = paddleX + currentPaddleWidth / 2;
+    currentPaddleWidth = width;
+    paddleX = Math.max(0, Math.min(frameWidth - currentPaddleWidth, center - currentPaddleWidth / 2));
+    paddle.style.width = currentPaddleWidth + 'px';
+}
+
+const spawnItem = (brick) => {
+    const pool = STAGES[currentStage].itemPool || Object.keys(ITEMS_TYPE);
+    const type = pool[Math.floor(Math.random() * pool.length)];
+    const data = ITEMS_TYPE[type];
+
+    const element = document.createElement('div');
+    element.className = 'powerup-item';
+    element.textContent = data.label;
+    element.style.width = itemWidth + 'px';
+    element.style.height = itemHeight + 'px';
+    element.style.background = data.color;
+    frame.insertBefore(element, message);
+
+    const item = {
+        type,
+        x: brick.col * brickWidth + brickWidth / 2,
+        y: brick.row * brickHeight + brickHeight,
+        element,
+    };
+
+    items.push(item);
+    renderItem(item);
+}
+
+const renderItem = (item) => {
+    item.element.style.transform = `translate(${item.x - itemWidth / 2}px, ${item.y}px)`;
+}
+
+const removeItem = (index) => {
+    items[index].element.remove();
+    items.splice(index, 1);
+}
+
+const updateItems = (fps) => {
+    for (let i = items.length - 1; i >= 0; i--) {
+        const item = items[i];
+        item.y += itemDropSpeed * fps;
+
+        const caught =
+            item.y + itemHeight >= paddleY &&
+            item.y <= paddleY + paddleHeight &&
+            item.x + itemWidth / 2 >= paddleX &&
+            item.y + itemWidth / 2 <= paddleX + currentPaddleWidth;
+
+        if (caught) {
+            ITEMS_TYPE[item.type].apply();
+            renderItem(i);
+        } else if (item.y > frameHeight) {
+            removeItem(i); //didn't catch the item (missed)
+        } else {
+            renderItem(item);
+        }
+    }
+}
+
+const updateEffects = (fps) => {
+    if (effects.widePaddleTimer > 0) {
+        effects.widePaddleTimer -= fps;
+        if (effects.widePaddleTimer <= 0) {
+            effects.widePaddleTimer = 0;
+            setPaddleWidth(paddleWidth);
+        }
+    }
+}
+
+const clearEffects = () => {
+    while (items.length > 0) removeItem(items.length - 1);
+    effects.widePaddleTimer = 0;
+    effects.shield = false;
+    shield.classList.add('hidden');
+    currentPaddleWidth = paddleWidth;
+    paddle.style.width = currentPaddleWidth + 'px';
+}
 
 
 
@@ -327,8 +482,6 @@ document.addEventListener('keyup', e => { keys[e.key] = false; });
 
 
 setupFrame();
-createBricks();
-resetBall();
-updateHud();
+loadStages()
 showMessage('Brick Breaker', 'Click or press Space to start');
 requestAnimationFrame(gameLoop);
