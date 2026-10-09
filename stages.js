@@ -1,4 +1,8 @@
-//Note: N - normal bricks, M - metal bricks
+//Note:
+// 'N' - normal bricks
+// 'M' - metal bricks
+// 'P' - power-up items
+// '.' - empty bricks
 
 const STAGES = [
     {
@@ -20,6 +24,18 @@ const STAGES = [
             'NNMMMMMNN',
             'NNNNNNNNN',
             'NNNNNNNNN'
+        ]
+    },
+
+    {
+        ballSpeed: 5.5,
+        itemPool: ['extraLife', 'widePaddle', 'shield'],
+        layout: [
+            'NNNNNNNNN',
+            'MMM...MMM',
+            'NPNNNPNNN',
+            'PNNNNNNNP',
+            'NNNNPNNNN',
         ]
     }
 ]
