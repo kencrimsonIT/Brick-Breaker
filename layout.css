@@ -45,6 +45,19 @@ body {
     visibility: hidden;
 }
 
+#bricks td.metal {
+    background: #bfbfbf;
+}
+
+#bricks td.has-item {
+    color: rgba(0, 0, 0, 0.5);
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1;
+    text-align: center;
+    vertical-align: middle;
+}
+
 #ball {
     position: absolute;
     top: 0;
@@ -91,4 +104,32 @@ body {
     margin: 0;
     font-size: 15px;
     opacity: 0.7;
+}
+
+.item {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+    top: 0;
+    left: 0;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: bold;
+    color: #111;
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.25);
+    pointer-events: none;
+}
+
+#shield {
+    position: absolute;
+    left: 0;
+    width: 100%;
+    background: #ffff70;
+    box-shadow: 0 0 10px rgba(42, 202, 60, 0.6);
+    pointer-events: none;
+}
+
+#shield.hidden {
+    display: none;
 }
