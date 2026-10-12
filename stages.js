@@ -3,6 +3,7 @@
 // 'M' - metal bricks
 // 'P' - power-up items
 // '.' - empty bricks
+// '2', '3', '4' - bricks that need 2, 3, 4 hits to break
 
 const STAGES = [
     {
@@ -36,6 +37,17 @@ const STAGES = [
             'NPNNNPNNN',
             'PNNNNNNNP',
             'NNNNPNNNN',
+        ]
+    },
+
+    {
+        ballSpeed: 5,
+        layout: [
+            'NNNNNNNNN',
+            'N2NN3NN3N',
+            '4NNN3NNNN',
+            'NNNNNNNNN',
+            '223NNN4N4'
         ]
     }
 ]
