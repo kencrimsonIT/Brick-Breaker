@@ -126,7 +126,7 @@ const setupFrame = () => {
     bricksGrid.style.top = brickTop + 'px';
     bricksGrid.style.width = frameWidth + 'px';
 
-    paddle.style.width = paddleWidth + 'px';
+    paddle.style.width = currentPaddleWidth + 'px';
     paddle.style.height = paddleHeight + 'px';
     paddle.style.background = paddleColor;
 
@@ -237,10 +237,10 @@ const nextStage = () => {
 const resetBall = () => {
     clearEffects();
     isLaunched = false;
-    paddleX = (frameWidth - paddleWidth) / 2;
+    paddleX = (frameWidth - currentPaddleWidth) / 2;
     ballSpeedX = 0;
     ballSpeedY = 0;
-    ballX = paddleX + paddleWidth / 2;
+    ballX = paddleX + currentPaddleWidth / 2;
     ballY = paddleY - ballRadius;
 }
 
@@ -305,6 +305,8 @@ const brickPosition = (x, y) => {
 const renderBricks = () => {
     paddle.style.transform = `translate(${paddleX}px, ${paddleY}px)`;
     ball.style.transform = `translate(${ballX - ballRadius}px, ${ballY - ballRadius}px)`;
+    shield.style.width = currentPaddleWidth + 'px';
+    shield.style.transform = `translate(${paddleX}px, ${shieldY}px)`;
 }
 
 const gameLoop = (time) => {
@@ -317,9 +319,12 @@ const gameLoop = (time) => {
 }
 
 const updateGameplay = (fps) => {
+    updateItems(fps);
+    updateEffects(fps);
+
     if (keys['ArrowLeft']) paddleX -= paddleSpeed * fps;
     if (keys['ArrowRight']) paddleX += paddleSpeed * fps;
-    paddleX = Math.max(0, Math.min(frameWidth - paddleWidth, paddleX));
+    paddleX = Math.max(0, Math.min(frameWidth - currentPaddleWidth, paddleX));
 
     if (!isLaunched) {
         ballX = paddleX + paddleWidth / 2;
@@ -368,9 +373,9 @@ const updateGameplay = (fps) => {
         ballY + ballRadius >= paddleY &&
         ballY + ballRadius <= paddleY + paddleHeight &&
         ballX >= paddleX - ballRadius &&
-        ballX <= paddleX + paddleWidth + ballRadius
+        ballX <= paddleX + currentPaddleWidth + ballRadius
     ) {
-        const offset = (ballX - (paddleX + paddleWidth / 2)) / (paddleWidth / 2);
+        const offset = (ballX - (paddleX + currentPaddleWidth / 2)) / (currentPaddleWidth / 2);
         const angle = Math.max(-1, Math.min(1, offset)) * maxBounceAngle * Math.PI / 180;
         ballSpeedX = ballSpeed * Math.sin(angle);
         ballSpeedY = -ballSpeed * Math.cos(angle);
@@ -425,7 +430,7 @@ const spawnItem = (brick) => {
     const item = {
         type,
         x: brick.col * brickWidth + brickWidth / 2,
-        y: brick.row * brickHeight + brickHeight,
+        y: brickTop + brick.row * brickHeight + brickHeight,
         element,
     };
 
@@ -451,7 +456,7 @@ const updateItems = (fps) => {
             item.y + itemHeight >= paddleY &&
             item.y <= paddleY + paddleHeight &&
             item.x + itemWidth / 2 >= paddleX &&
-            item.y + itemWidth / 2 <= paddleX + currentPaddleWidth;
+            item.x - itemWidth / 2 <= paddleX + currentPaddleWidth;
 
         if (caught) {
             ITEMS_TYPE[item.type].apply();
