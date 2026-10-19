@@ -3,7 +3,7 @@
 // 'M' - metal bricks
 // 'P' - power-up items
 // '.' - empty bricks
-// '2', '3', '4' - bricks that need 2, 3, 4 hits to break
+// '2', '3', '4',... - bricks that need 2, 3, 4,... hits to break
 
 const STAGES = [
     {
