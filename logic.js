@@ -23,6 +23,15 @@ const brickWidth = 72;
 const brickHeight = 20;
 let bricks = []; //empty bricks array
 
+//HP point for each brick
+const BRICKS_HP = {
+    N: 1,
+    P: 1,
+    '2': 2,
+    '3': 3,
+    '4': 4
+};
+
 //Initialize ball UI
 const paddleWidth = 100;
 const paddleHeight = 15;
@@ -43,7 +52,7 @@ let ballSpeed = 5;
 const startLife = 3;
 const pointPerBrick = 15;
 const maxBounceAngle = 65;
-const firstStage = 0;
+const firstStage = 2;
 const maxLife = 6; //maximum life value
 
 //Power-up item settings
@@ -106,6 +115,7 @@ let gameState = 'menu';
 let keys = {};
 let lastTime = 0;
 let currentStage = firstStage;
+let frameId = 0;
 
 
 //Setup game UI
@@ -146,19 +156,26 @@ const createBricks = () => {
             cell.style.width = brickWidth + 'px';
             cell.style.height = brickHeight + 'px';
 
+            const hpValue = BRICKS_HP[type] || 0; //0 for metal & empty bricks
             const brick = {
                 cell,
                 type,
-                alive: type === 'N' || type === 'M' || type === 'P', row: r, col: c
+                alive: hpValue > 0 || type === 'M',
+                row: r,
+                col: c,
+                hpValue,
+                maxHpValue: hpValue,
+                hitFrame: -1
             };
 
-            if (type === 'N' || type === 'P') {
+            if (hpValue > 0) {
                 cell.style.background = brickColors[r % brickColors.length];
                 bricksLeft++;
                 if (type === 'P') {
                     cell.classList.add('has-item');
                     cell.textContent = '?';
                 }
+                if (brick.maxHpValue > 1) updateBrickUI(brick);
             } else if (type === 'M') {
                 cell.classList.add('metal');
                 cell.style.background = '#737373';
@@ -169,6 +186,12 @@ const createBricks = () => {
         }
         bricks.push(row);
     }
+}
+
+const updateBrickUI = (brick) => {
+    brick.cell.classList.remove('hp-1', 'hp-2', 'hp-3', 'hp-4');
+    brick.cell.classList.add('multi', 'hp-' + brick.hpValue);
+    brick.cell.textContent = brick.hpValue;
 }
 
 const showMessage = (title, line1, line2) => {
@@ -254,7 +277,7 @@ const breakBrick = (brick) => {
     brick.alive = false;
     brick.cell.classList.add('broken');
     bricksLeft--;
-    scoreValue += pointPerBrick;
+    scoreValue += pointPerBrick * brick.maxHpValue;
     updateHud();
     if (brick.type === 'P') spawnItem(brick);
 }
@@ -262,6 +285,13 @@ const breakBrick = (brick) => {
 //Bounce when hit metal bricks, break when hit normal bricks
 const hitBrick = (brick) => {
     if (brick.type === 'M') return;
+    if (brick.hitFrame === frameId) return;
+    brick.hitFrame = frameId;
+    brick.hpValue--;
+    if (brick.hpValue > 0) {
+        updateBrickUI(brick);
+        return;
+    }
     breakBrick(brick);
 }
 
@@ -278,6 +308,7 @@ const renderBricks = () => {
 }
 
 const gameLoop = (time) => {
+    frameId++;
     const fps = Math.min((time - lastTime) / 16.67, 3) || 1;
     lastTime = time;
     if (gameState === 'playing') updateGameplay(fps);
@@ -424,7 +455,7 @@ const updateItems = (fps) => {
 
         if (caught) {
             ITEMS_TYPE[item.type].apply();
-            renderItem(i);
+            removeItem(i);
         } else if (item.y > frameHeight) {
             removeItem(i); //didn't catch the item (missed)
         } else {
@@ -458,7 +489,7 @@ const clearEffects = () => {
 const paddleMovement = (clientX) => {
     const rect = frame.getBoundingClientRect();
     const x = (clientX - rect.left) * (frameWidth / rect.width);
-    paddleX = Math.max(0, Math.min(frameWidth - paddleWidth, x - paddleWidth / 2));
+    paddleX = Math.max(0, Math.min(frameWidth - currentPaddleWidth, x - currentPaddleWidth / 2));
 }
 
 const handleAction = () => {
