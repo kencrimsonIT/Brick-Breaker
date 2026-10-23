@@ -1,3 +1,58 @@
+//Note:
+// 'N' - normal bricks
+// 'M' - metal bricks
+// 'P' - power-up items
+// '.' - empty bricks
+// '2', '3', '4',... - bricks that need 2, 3, 4,... hits to break
+const STAGES = [
+    {
+        ballSpeed: 5,
+        layout: [
+            'NNNNNNNNN',
+            'NNNNNNNNN',
+            'NNNNNNNNN',
+            'NNNNNNNNN',
+            'NNNNNNNNN'
+        ]
+    },
+
+    {
+        ballSpeed: 5,
+        layout: [
+            'NNNNNNNNN',
+            'NNNNNNNNN',
+            'NNMMMMMNN',
+            'NNNNNNNNN',
+            'NNNNNNNNN'
+        ]
+    },
+
+    {
+        ballSpeed: 5.5,
+        itemPool: ['extraLife', 'widePaddle', 'shield'],
+        layout: [
+            'NNNNNNNNN',
+            'MMM...MMM',
+            'NPNNNPNNN',
+            'PNNNNNNNP',
+            'NNNNPNNNN',
+        ]
+    },
+
+    {
+        ballSpeed: 5,
+        layout: [
+            'NNNNNNNNN',
+            'N2NN3NN3N',
+            '4NNN3NNNN',
+            'NNNNNNNNN',
+            '223NNN4N4'
+        ]
+    }
+]
+
+
+
 //Get elements id from HTML
 const score = document.getElementById('score');
 const life = document.getElementById('life');
@@ -54,6 +109,9 @@ const pointPerBrick = 15;
 const maxBounceAngle = 65;
 const firstStage = 2;
 const maxLife = 6; //maximum life value
+const maxBalls = 10; //maximum balls number
+const splitAngle = 20; //splitting angle between original & copy
+let balls = [];
 
 //Power-up item settings
 const itemWidth = 30;
@@ -98,6 +156,29 @@ const ITEMS_TYPE = {
         apply: () => {
             effects.shield = true;
             shield.classList.remove('hidden');
+        }
+    },
+
+    multiBall: {
+        label: 'Multi Ball',
+        color: '#bbff33',
+        apply: () => { //splitting balls function
+            if (!isLaunched) return;
+            const source = ball.slice();
+            for (const part of source) {
+                const speed = Math.hypot(part.speedX, part.speedY) || ballSpeed;
+                const directionY = part.speedY >= 0 ? 1 : -1;
+                const currentAngle = Math.atan2(part.speedX, Math.abs(part.speedY)) * 180 / Math.PI;
+                const deviationAngle = currentAngle >= 0 ? -splitAngle : splitAngle;
+                const newAngle = Math.max(-maxBounceAngle, Math.min(maxBounceAngle, currentAngle + deviationAngle)) * Math.PI / 180;
+                ball.push({
+                    x: part.x,
+                    y: part.y,
+                    speedX: speed * Math.sin(newAngle),
+                    speedY: directionY * speed * Math.cos(newAngle),
+                    element: createBallPart()
+                });
+            }
         }
     }
 };
@@ -236,24 +317,57 @@ const nextStage = () => {
 
 const resetBall = () => {
     clearEffects();
+    removeAllBalls();
     isLaunched = false;
     paddleX = (frameWidth - currentPaddleWidth) / 2;
-    ballSpeedX = 0;
-    ballSpeedY = 0;
-    ballX = paddleX + currentPaddleWidth / 2;
-    ballY = paddleY - ballRadius;
+    ball.style.display = '';
+    ball.push({
+        x: paddleX + currentPaddleWidth / 2,
+        y: paddleY - ballRadius,
+        speedX: 0,
+        speedY: 0,
+        element: ball
+    });
+}
+
+const removeAllBalls = () => {
+    while (balls.length > 0) removeBall(balls.length - 1);
+}
+
+const removeBall = (index) => {
+    const element = ball[index].element;
+    if (element === ball) {
+        element.style.display = 'none'; //hide the ball's copies
+    } else {
+        element.remove();
+    }
+    ball.splice(index, 1);
+}
+
+const createBallPart = () => {
+    const ballPart = document.createElement('div');
+    ballPart.style.position = 'absolute';
+    ballPart.style.top = '0';
+    ballPart.style.left = '0';
+    ballPart.style.borderRadius = '50%';
+    ballPart.style.width = ballWidth + 'px';
+    ballPart.style.height = ballHeight + 'px';
+    ballPart.style.background = ballColor;
+    frame.insertBefore(ballPart, message);
+    return ballPart;
 }
 
 const launchBall = () => {
     if (gameState !== 'playing' || isLaunched) return;
     isLaunched = true;
     const ballAngle = (Math.random() * 60 - 30) * Math.PI / 180;
-    ballSpeedX = ballSpeed * Math.sin(ballAngle);
-    ballSpeedY = -ballSpeed * Math.cos(ballAngle);
+    balls[0].speedX = ballSpeed * Math.sin(ballAngle);
+    balls[0].speedY = -ballSpeed * Math.cos(ballAngle);
 }
 
 const endGame = (isClear) => {
     clearEffects();
+    while (balls.length > 1) removeBall(balls.length - 1);
     const isLastStage = currentStage === STAGES.length - 1;
     if (isClear && !isLastStage) {
         gameState = 'clear';
@@ -304,7 +418,9 @@ const brickPosition = (x, y) => {
 
 const renderBricks = () => {
     paddle.style.transform = `translate(${paddleX}px, ${paddleY}px)`;
-    ball.style.transform = `translate(${ballX - ballRadius}px, ${ballY - ballRadius}px)`;
+    for (const b of balls) {
+        b.element.style.transform = `translate(${b.x - ballRadius}px, ${b.y - ballRadius}px)`;
+    }
     shield.style.width = currentPaddleWidth + 'px';
     shield.style.transform = `translate(${paddleX}px, ${shieldY}px)`;
 }
@@ -327,66 +443,13 @@ const updateGameplay = (fps) => {
     paddleX = Math.max(0, Math.min(frameWidth - currentPaddleWidth, paddleX));
 
     if (!isLaunched) {
-        ballX = paddleX + paddleWidth / 2;
-        ballY = paddleY - ballRadius;
+        balls[0].x = paddleX + currentPaddleWidth / 2;
+        balls[0].y = paddleY - ballRadius;
         return;
     }
 
-    const directionX = Math.sign(ballSpeedX);
-    const directionY = Math.sign(ballSpeedY);
-    const nextX = ballX + ballSpeedX * fps;
-    const nextY = ballY + ballSpeedY * fps;
-
-    const brickX = brickPosition(nextX + directionX * ballRadius, ballY);
-    if (brickX) {
-        hitBrick(brickX);
-        ballSpeedX = -ballSpeedX;
-    } else {
-        ballX = nextX;
-    }
-
-    const brickY = brickPosition(ballX, nextY + directionY * ballRadius);
-    if (brickY) {
-        hitBrick(brickY);
-        ballSpeedY = -ballSpeedY;
-    } else {
-        ballY = nextY;
-    }
-
-    if (ballX < ballRadius) {
-        ballX = ballRadius;
-        ballSpeedX = Math.abs(ballSpeedX);
-    }
-
-    if (ballX > frameWidth - ballRadius) {
-        ballX = frameWidth - ballRadius;
-        ballSpeedX = -Math.abs(ballSpeedX);
-    }
-
-    if (ballY < ballRadius) {
-        ballY = ballRadius;
-        ballSpeedY = Math.abs(ballSpeedY);
-    }
-
-    if (
-        ballSpeedY > 0 &&
-        ballY + ballRadius >= paddleY &&
-        ballY + ballRadius <= paddleY + paddleHeight &&
-        ballX >= paddleX - ballRadius &&
-        ballX <= paddleX + currentPaddleWidth + ballRadius
-    ) {
-        const offset = (ballX - (paddleX + currentPaddleWidth / 2)) / (currentPaddleWidth / 2);
-        const angle = Math.max(-1, Math.min(1, offset)) * maxBounceAngle * Math.PI / 180;
-        ballSpeedX = ballSpeed * Math.sin(angle);
-        ballSpeedY = -ballSpeed * Math.cos(angle);
-        ballY = paddleY - ballRadius;
-    }
-
-    if (effects.shield && ballSpeedY > 0 && ballY + ballRadius > shieldY) {
-        ballY = shieldY - ballRadius;
-        ballSpeedY = -Math.abs(ballSpeedY);
-        effects.shield = false;
-        shield.classList.add('hidden');
+    for (let i = balls.length; i >= 0; i--) {
+        if (updateBall(balls[i], fps)) removeBall(i);
     }
 
     if (ballY - ballRadius > frameHeight) {
@@ -401,6 +464,67 @@ const updateGameplay = (fps) => {
     }
 
     if (bricksLeft === 0) endGame(true);
+}
+
+const updateBall = (ball, fps) => {
+    const directionX = Math.sign(ball.speedX);
+    const directionY = Math.sign(ball.speedY);
+    const nextX = ball.x + ball.speedX * fps;
+    const nextY = ball.y + ball.speedY * fps;
+
+    const brickX = brickPosition(nextX + directionX * ballRadius, ball.y);
+    if (brickX) {
+        hitBrick(brickX, ball);
+        ball.speedX = -ball.speedX;
+    } else {
+        ball.x = nextX;
+    }
+
+    const brickY = brickPosition(ball.x, nextY + directionY * ballRadius);
+    if (brickY) {
+        hitBrick(brickY, ball);
+        ball.speedY = -ball.speedY;
+    } else {
+        ball.y = nextY;
+    }
+
+    if (ball.x< ballRadius) {
+        ball.x = ballRadius;
+        ball.speedX = Math.abs(ball.speedX);
+    }
+
+    if (ball.x > frameWidth - ballRadius) {
+        ball.x = frameWidth - ballRadius;
+        ball.speedX = -Math.abs(ball.speedX);
+    }
+
+    if (ball.y < ballRadius) {
+        ball.y = ballRadius;
+        ball.speedY = Math.abs(ball.speedY);
+    }
+
+    if (
+        ball.speedY > 0 &&
+        ball.y + ballRadius >= paddleY &&
+        ball.y + ballRadius <= paddleY + paddleHeight &&
+        ball.x >= paddleX - ballRadius &&
+        ball.x <= paddleX + currentPaddleWidth + ballRadius
+    ) {
+        const offset = (ball.x - (paddleX + currentPaddleWidth / 2)) / (currentPaddleWidth / 2);
+        const angle = Math.max(-1, Math.min(1, offset)) * maxBounceAngle * Math.PI / 180;
+        ball.speedX = ballSpeed * Math.sin(angle);
+        ball.speedY = -ballSpeed * Math.cos(angle);
+        ball.y = paddleY - ballRadius;
+    }
+
+    if (effects.shield && ball.speedY > 0 && ball.y + ballRadius > shieldY) {
+        ball.y = shieldY - ballRadius;
+        ball.speedY = -Math.abs(ball.speedY);
+        effects.shield = false;
+        shield.classList.add('hidden');
+    }
+
+    return ball.y - ballRadius > frameHeight;
 }
 
 

@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ping Pong</title>
+    <link rel="icon" href="assets/favicon.ico">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap');
+
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background: #1a1a1a;
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 13px;
+            margin: 0 auto;
+            padding: 18px;
+        }
+
+        #hud {
+            display: flex;
+            justify-content: space-between;
+            font-weight: 500;
+        }
+
+        #frame {
+            position: relative;
+            background: #111;
+            border-radius: 9px;
+            overflow: hidden;
+            touch-action: none;
+            user-select: none;
+        }
+
+        #bricks {
+            position: absolute;
+            left: 0;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+
+        #bricks td {
+            padding: 0;
+            box-sizing: border-box;
+            border: 1px solid #111;
+            border-radius: 5px;
+        }
+
+        #bricks td.broken {
+            visibility: hidden;
+        }
+
+        #bricks td.metal {
+            background: #bfbfbf;
+        }
+
+        #bricks td.has-item {
+            color: rgba(0, 0, 0, 0.5);
+            font-size: 14px;
+            font-weight: 500;
+            line-height: 1;
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        #bricks td.multi {
+            font-size: 14px;
+            font-weight: 500;
+            line-height: 1;
+            text-align: center;
+            vertical-align: middle;
+            color: #fff;
+        }
+
+        #bricks td.hp-1 {
+            filter: none;
+        }
+
+        #bricks td.hp-2 {
+            filter: none;
+        }
+
+        #bricks td.hp-3 {
+            filter: none;
+        }
+
+        #bricks td.hp-4 {
+            filter: none;
+        }
+
+        #ball {
+            position: absolute;
+            top: 0;
+            left: 0;
+            border-radius: 50%;
+            box-shadow: 0 0 10px rgba(255, 255, 170, 0.45);
+        }
+
+        #paddle {
+            position: absolute;
+            top: 0;
+            left: 0;
+            border-radius: 7px;
+        }
+
+        #message {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            position: absolute;
+            inset: 0;
+            gap: 5px;
+            background: rgba(0, 0, 0, 0.6);
+            cursor: pointer;
+        }
+
+        #message.hidden {
+            display: none;
+        }
+
+        #message h2 {
+            margin: 0;
+            font-size: 36px;
+        }
+
+        #message p {
+            margin: 0;
+            opacity: 0.7;
+        }
+
+        .hint {
+            margin: 0;
+            font-size: 15px;
+            opacity: 0.7;
+        }
+
+        .powerup-item {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: absolute;
+            top: 0;
+            left: 0;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: bold;
+            color: #111;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.25);
+            pointer-events: none;
+        }
+
+        #shield {
+            position: absolute;
+            left: 0;
+            width: 100%;
+            background: #ffff70;
+            box-shadow: 0 0 10px rgba(42, 202, 60, 0.6);
+            pointer-events: none;
+        }
+
+        #shield.hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <!--Game header-->
+    <div id="hud">
+        <span>Score: <b id="score">0</b></span>
+        <span>Stage <b id="stage">1</b></span>
+        <span>Life: <b id="life">3</b></span>
+    </div>
+
+    <!--Game frame-->
+    <div id="frame">
+        <table id="bricks"></table>
+        <div id="ball"></div>
+        <div id="paddle"></div>
+        <div id="message"><p>Open the game</p></div>
+    </div>
+
+    <!--Hints-->
+    <p class="hint">
+        Click <strong>LMB</strong> or press <strong>Space</strong> to launch the ball
+    </p>
+    <p class="hint">
+        Use mouse or press <strong>Left</strong> and <strong>Right</strong> to move the paddle
+    </p>
+
+    <script src="game.js"></script>
+</body>
+</html>
