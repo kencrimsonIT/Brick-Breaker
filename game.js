@@ -5,6 +5,7 @@
 // '.' - empty bricks
 // '2', '3', '4',... - bricks that need 2, 3, 4,... hits to break
 const STAGES = [
+    //Stage 1
     {
         ballSpeed: 5,
         layout: [
@@ -16,6 +17,7 @@ const STAGES = [
         ]
     },
 
+    //Stage 2
     {
         ballSpeed: 5,
         layout: [
@@ -27,6 +29,7 @@ const STAGES = [
         ]
     },
 
+    //Stage 3
     {
         ballSpeed: 5.5,
         itemPool: ['extraLife', 'widePaddle', 'shield'],
@@ -39,6 +42,7 @@ const STAGES = [
         ]
     },
 
+    //Stage 4
     {
         ballSpeed: 5,
         layout: [
@@ -47,6 +51,32 @@ const STAGES = [
             '4NNN3NNNN',
             'NNNNNNNNN',
             '223NNN4N4'
+        ]
+    },
+
+    //Stage 5
+    {
+        ballSpeed: 5.5,
+        itemPool: ['widePaddle', 'shield', 'multiBall'],
+        layout: [
+            '555555555',
+            'MMM444MMM',
+            '33P333P33',
+            'NPPNPNPPN',
+            '222MMM222'
+        ]
+    },
+
+    //Stage 6
+    {
+        ballSpeed: 6,
+        itemPool: ['extraLife', 'widePaddle', 'shield', 'multiBall'],
+        layout: [
+            'NNNNNNNNN',
+            'MMM...MMM',
+            'PNPMMMNPN',
+            'P...P...P',
+            'NNNMMMNNN',
         ]
     }
 ]
@@ -88,7 +118,8 @@ const BRICKS_HP = {
     P: 1,
     '2': 2,
     '3': 3,
-    '4': 4
+    '4': 4,
+    '5': 5
 };
 
 //Initialize ball UI
@@ -304,6 +335,39 @@ const startGame = (stageIndex = currentStage) => {
     message.classList.add('hidden');
 }
 
+const buildStageLayout = (source, options = {}) => {
+    const {
+        respawnChance = 0.2,
+        minRespawnCount = 3,
+        maxRespawnCount = 14,
+    } = options;
+
+    const rows = source.map(row => row.split(''));
+    const candidates = [];
+
+    rows.forEach((row, r) => {
+        row.forEach((cell, c) => {
+            if (cell === '.') {
+                candidates.push({r, c});
+            }
+        });
+    });
+
+    const respawnCount = Math.min(
+        maxRespawnCount,
+        Math.max(minRespawnCount, Math.floor(candidates.length * respawnChance))
+    );
+
+    //Random respawn
+    for (let i = 0; i < respawnCount; i++) {
+        const index = Math.floor(Math.random() * candidates.length);
+        const {r, c} = candidates.splice(index, 1);
+        rows[r][c] = 'N';
+    }
+
+    return rows.map(row => row.join(''));
+}
+
 const loadStages = () => {
     ballSpeed = STAGES[currentStage].ballSpeed;
     createBricks();
@@ -313,6 +377,26 @@ const loadStages = () => {
 
 const nextStage = () => {
     currentStage++;
+
+    if (currentStage >= STAGES.length) {
+        endGame(true);
+        return;
+    }
+
+    const nextLayout = buildStageLayout(
+        STAGES[currentStage].layout,
+        {
+            respawnChance: 0.25,
+            minRespawnCount: 4,
+            maxRespawnCount: 12,
+        }
+    );
+
+    STAGES[currentStage] = {
+        ...STAGES[currentStage],
+        layout: nextLayout,
+    }
+
     loadStages();
     gameState = 'playing';
     message.classList.add('hidden');
@@ -455,7 +539,7 @@ const updateGameplay = (fps) => {
         if (updateBall(balls[i], fps)) removeBall(i);
     }
 
-    if (ballY - ballRadius > frameHeight) {
+    if (balls.length === 0) {
         lifeValue--;
         updateHud();
         if (lifeValue <= 0) {
