@@ -57,7 +57,7 @@ const STAGES = [
 const score = document.getElementById('score');
 const life = document.getElementById('life');
 const frame = document.getElementById('frame');
-const ball = document.getElementById('ball');
+const ballElement = document.getElementById('ball');
 const paddle = document.getElementById('paddle');
 const message = document.getElementById('message');
 const hud = document.getElementById('hud');
@@ -164,14 +164,14 @@ const ITEMS_TYPE = {
         color: '#bbff33',
         apply: () => { //splitting balls function
             if (!isLaunched) return;
-            const source = ball.slice();
+            const source = balls.slice();
             for (const part of source) {
                 const speed = Math.hypot(part.speedX, part.speedY) || ballSpeed;
                 const directionY = part.speedY >= 0 ? 1 : -1;
                 const currentAngle = Math.atan2(part.speedX, Math.abs(part.speedY)) * 180 / Math.PI;
                 const deviationAngle = currentAngle >= 0 ? -splitAngle : splitAngle;
                 const newAngle = Math.max(-maxBounceAngle, Math.min(maxBounceAngle, currentAngle + deviationAngle)) * Math.PI / 180;
-                ball.push({
+                balls.push({
                     x: part.x,
                     y: part.y,
                     speedX: speed * Math.sin(newAngle),
@@ -320,13 +320,13 @@ const resetBall = () => {
     removeAllBalls();
     isLaunched = false;
     paddleX = (frameWidth - currentPaddleWidth) / 2;
-    ball.style.display = '';
-    ball.push({
+    ballElement.style.display = '';
+    balls.push({
         x: paddleX + currentPaddleWidth / 2,
         y: paddleY - ballRadius,
         speedX: 0,
         speedY: 0,
-        element: ball
+        element: ballElement
     });
 }
 
@@ -335,13 +335,13 @@ const removeAllBalls = () => {
 }
 
 const removeBall = (index) => {
-    const element = ball[index].element;
-    if (element === ball) {
+    const element = balls[index].element;
+    if (element === ballElement) {
         element.style.display = 'none'; //hide the ball's copies
     } else {
         element.remove();
     }
-    ball.splice(index, 1);
+    balls.splice(index, 1);
 }
 
 const createBallPart = () => {
@@ -448,7 +448,7 @@ const updateGameplay = (fps) => {
         return;
     }
 
-    for (let i = balls.length; i >= 0; i--) {
+    for (let i = balls.length - 1; i >= 0; i--) {
         if (updateBall(balls[i], fps)) removeBall(i);
     }
 
