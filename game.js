@@ -63,6 +63,10 @@ const message = document.getElementById('message');
 const hud = document.getElementById('hud');
 const bricksGrid = document.getElementById('bricks');
 const stage = document.getElementById('stage');
+const stageOption = document.getElementById('stageOption');
+const stageGrid = document.getElementById('stageGrid');
+const gameScreen = document.getElementById('gameScreen');
+const backButton = document.getElementById('backBtn');
 
 //Initialize brick UI
 const brickCols = 9;
@@ -107,7 +111,6 @@ let ballSpeed = 5;
 const startLife = 3;
 const pointPerBrick = 15;
 const maxBounceAngle = 65;
-const firstStage = 2;
 const maxLife = 6; //maximum life value
 const maxBalls = 10; //maximum balls number
 const splitAngle = 20; //splitting angle between original & copy
@@ -166,6 +169,7 @@ const ITEMS_TYPE = {
             if (!isLaunched) return;
             const source = balls.slice();
             for (const part of source) {
+                if (balls.length >= maxBalls) break;
                 const speed = Math.hypot(part.speedX, part.speedY) || ballSpeed;
                 const directionY = part.speedY >= 0 ? 1 : -1;
                 const currentAngle = Math.atan2(part.speedX, Math.abs(part.speedY)) * 180 / Math.PI;
@@ -190,13 +194,12 @@ let lifeValue = startLife;
 let bricksLeft = 0;
 let currentPaddleWidth = paddleWidth;
 let paddleX = 0;
-let ballX = 0, ballY = 0, ballSpeedX = 0, ballSpeedY = 0;
 let isLaunched = false;
 let gameState = 'menu';
 let keys = {};
 let lastTime = 0;
-let currentStage = firstStage;
 let frameId = 0;
+let currentStage = 0;
 
 
 //Setup game UI
@@ -211,9 +214,9 @@ const setupFrame = () => {
     paddle.style.height = paddleHeight + 'px';
     paddle.style.background = paddleColor;
 
-    ball.style.width = ballWidth + 'px';
-    ball.style.height = ballHeight + 'px';
-    ball.style.background = ballColor;
+    ballElement.style.width = ballWidth + 'px';
+    ballElement.style.height = ballHeight + 'px';
+    ballElement.style.background = ballColor;
 
     shield.id = 'shield';
     shield.classList.add('hidden');
@@ -292,10 +295,10 @@ const updateHud = () => {
 
 
 //Gameplay flow
-const startGame = () => {
+const startGame = (stageIndex = currentStage) => {
     scoreValue = 0;
     lifeValue = startLife;
-    currentStage = firstStage;
+    currentStage = stageIndex;
     loadStages();
     gameState = 'playing';
     message.classList.add('hidden');
@@ -379,11 +382,11 @@ const endGame = (isClear) => {
         return;
     }
 
-    gameState = 'over';
+    gameState = isClear ? 'win' : 'over';
     showMessage(
         isClear ? 'You win!' : 'Game over',
         'Score: ' + scoreValue,
-        'Click or press Space to play again'
+        isClear ? 'Click or press Space to go back to stage select' : 'Click or press Space to try again'
     );
 }
 
@@ -530,6 +533,65 @@ const updateBall = (ball, fps) => {
 
 
 
+//Stage option screen
+const stageTiles = [];
+
+const initStageOption = () => {
+    stageGrid.innerHTML = '';
+    stageTiles.length = 0;
+    STAGES.forEach((data, index) => {
+        const tile = document.createElement('buttom');
+        tile.type = 'button';
+        tile.className = 'stage-tile';
+        tile.setAttribute('aria-label', 'Stage' + (index + 1));
+
+        const number = document.createElement('span');
+        number.className = 'stage-number';
+        number.textContent = index + 1;
+
+        const preview = document.createElement('div');
+        preview.className = 'stage-preview';
+        preview.style.gridTemplateColumns = `repeat(${brickCols}, 1fr)`;
+        data.layout.forEach((rowTxt, r) => {
+            for (let c = 0; c < brickCols; c++) {
+                const type = rowTxt[c]; //brick type
+                const cell = document.createElement('i');
+                if (type === 'M') {
+                    cell.style.background = '#737373'
+                } else if (BRICKS_HP[type]) {
+                    cell.style.background = brickColors[r % brickColors.length];
+                    if (BRICKS_HP[type] > 1) cell.style.filter = `brightness(${1 - 0.2 * (BRICKS_HP[type] - 1)});`;
+                }
+                preview.appendChild(cell);
+            }
+        });
+
+        tile.appendChild(number);
+        tile.appendChild(preview);
+        tile.addEventListener('click', () => selectStage(index));
+        stageGrid.appendChild(tile);
+        stageTiles.push(tile);
+    })
+}
+
+const selectStage = (index) => {
+    stageOption.classList.add('hidden');
+    gameScreen.classList.remove('hidden');
+    startGame(index);
+}
+
+const showStageOption = (focusTile = true) => {
+    gameState = 'selected';
+    clearEffects();
+    removeAllBalls();
+    gameScreen.classList.add('hidden');
+    stageOption.classList.remove('hidden');
+    if (focusTile && stageTiles[currentStage]) stageTiles[currentStage].focus();
+}
+
+
+
+
 //Item logic
 const setPaddleWidth = (width) => {
     const center = paddleX + currentPaddleWidth / 2;
@@ -622,16 +684,26 @@ const paddleMovement = (clientX) => {
 }
 
 const handleAction = () => {
+    if (gameState === 'selected') return;
     if (gameState === 'playing') launchBall();
     else if (gameState === 'clear') nextStage();
+    else if (gameState === 'win') showStageOption();
     else startGame();
 }
 
 document.addEventListener('mousemove', e => { if (gameState === 'playing') paddleMovement(e.clientX); });
 frame.addEventListener('click', handleAction);
+backButton.addEventListener('click', () => showStageOption())
 document.addEventListener('keydown', e => {
     keys[e.key] = true;
-    if (e.key === ' ' && !e.repeat) {
+
+    //Key to return stage option
+    if (e.key === 'Escape' && gameState !== 'selected') {
+        showStageOption();
+        return;
+    }
+
+    if (e.key === ' ' && !e.repeat && gameState !== 'selected') {
         e.preventDefault();
         handleAction();
     }
@@ -642,6 +714,7 @@ document.addEventListener('keyup', e => { keys[e.key] = false; });
 
 
 setupFrame();
-loadStages()
-showMessage('Brick Breaker', 'Click or press Space to start');
+initStageOption()
+showStageOption(false)
+showMessage('Ping Pong', 'Click or press Space to start');
 requestAnimationFrame(gameLoop);
